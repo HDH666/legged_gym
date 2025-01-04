@@ -38,7 +38,7 @@ class LeggedRobotCfg(BaseConfig):
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
-        episode_length_s = 20 # episode length in seconds
+        episode_length_s = 20 # episode length in seconds 每个训练回合的最大持续时间（以秒为单位）
 
     class terrain:
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
@@ -71,7 +71,7 @@ class LeggedRobotCfg(BaseConfig):
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = True # if true: compute ang vel command from heading error
-        class ranges:
+        class ranges: # 命令范围
             lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_y = [-1.0, 1.0]   # min max [m/s]
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
@@ -124,11 +124,11 @@ class LeggedRobotCfg(BaseConfig):
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
         push_robots = True
-        push_interval_s = 15
-        max_push_vel_xy = 1.
+        push_interval_s = 15 # 推动机器人的时间间隔
+        max_push_vel_xy = 1. # 推动机器人的最大速度
 
     class rewards:
-        class scales:
+        class scales: # 奖励缩放系数
             termination = -0.0
             tracking_lin_vel = 1.0
             tracking_ang_vel = 0.5
@@ -153,8 +153,8 @@ class LeggedRobotCfg(BaseConfig):
         base_height_target = 1.
         max_contact_force = 100. # forces above this value are penalized
 
-    class normalization:
-        class obs_scales:
+    class normalization: # 归一化
+        class obs_scales: # 观测值缩放系数
             lin_vel = 2.0
             ang_vel = 0.25
             dof_pos = 1.0

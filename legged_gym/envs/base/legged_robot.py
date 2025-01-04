@@ -67,11 +67,11 @@ class LeggedRobot(BaseTask):
         self.height_samples = None
         self.debug_viz = False
         self.init_done = False
-        self._parse_cfg(self.cfg)
+        self._parse_cfg(self.cfg) # 缩放系数 最大步数等
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
 
         if not self.headless:
-            self.set_camera(self.cfg.viewer.pos, self.cfg.viewer.lookat)
+            self.set_camera(self.cfg.viewer.pos, self.cfg.viewer.lookat) # 设置相机位置和方向
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
@@ -92,7 +92,7 @@ class LeggedRobot(BaseTask):
             self.gym.simulate(self.sim)
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
-            self.gym.refresh_dof_state_tensor(self.sim)
+            self.gym.refresh_dof_state_tensor(self.sim) # 算力矩需要刷新 200Hz PD控制器
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -113,7 +113,7 @@ class LeggedRobot(BaseTask):
         self.episode_length_buf += 1
         self.common_step_counter += 1
 
-        # prepare quantities
+        # prepare quantities 世界坐标系转换到机器人坐标系
         self.base_quat[:] = self.root_states[:, 3:7]
         self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
@@ -122,7 +122,7 @@ class LeggedRobot(BaseTask):
         self._post_physics_step_callback()
 
         # compute observations, rewards, resets, ...
-        self.check_termination()
+        self.check_termination() # check if environments need to be reset
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
@@ -162,7 +162,7 @@ class LeggedRobot(BaseTask):
             self.update_command_curriculum(env_ids)
         
         # reset robot states
-        self._reset_dofs(env_ids)
+        self._reset_dofs(env_ids) # Positions are randomly selected within 0.5:1.5 x default positions. Velocities are set to zero.
         self._reset_root_states(env_ids)
 
         self._resample_commands(env_ids)
@@ -323,7 +323,7 @@ class LeggedRobot(BaseTask):
         """
         # 
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
-        self._resample_commands(env_ids)
+        self._resample_commands(env_ids) # resample commands
         if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
@@ -482,9 +482,11 @@ class LeggedRobot(BaseTask):
         """ Initialize torch tensors which will contain simulation states and processed quantities
         """
         # get gym GPU state tensors
+        # The buffer has shape (num_actors, 13). State for each actor root contains position([0:3]), rotation([3:7]), linear velocity([7:10]), and angular velocity([10:13])
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
+        # Buffer has shape (num_dofs, 2). Each DOF state contains position and velocity.
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
-        net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim)
+        net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim) # (num_rigid_bodies, 3)
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
@@ -492,7 +494,7 @@ class LeggedRobot(BaseTask):
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
-        self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
+        self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0] # shape: num_envs, num_dof
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
 
@@ -625,7 +627,7 @@ class LeggedRobot(BaseTask):
         asset_file = os.path.basename(asset_path)
 
         asset_options = gymapi.AssetOptions()
-        asset_options.default_dof_drive_mode = self.cfg.asset.default_dof_drive_mode
+        asset_options.default_dof_drive_mode = self.cfg.asset.default_dof_drive_mode # 关节驱动模式 力控
         asset_options.collapse_fixed_joints = self.cfg.asset.collapse_fixed_joints
         asset_options.replace_cylinder_with_capsule = self.cfg.asset.replace_cylinder_with_capsule
         asset_options.flip_visual_attachments = self.cfg.asset.flip_visual_attachments
@@ -642,8 +644,8 @@ class LeggedRobot(BaseTask):
         robot_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
         self.num_dof = self.gym.get_asset_dof_count(robot_asset)
         self.num_bodies = self.gym.get_asset_rigid_body_count(robot_asset)
-        dof_props_asset = self.gym.get_asset_dof_properties(robot_asset)
-        rigid_shape_props_asset = self.gym.get_asset_rigid_shape_properties(robot_asset)
+        dof_props_asset = self.gym.get_asset_dof_properties(robot_asset) # 关节属性列表
+        rigid_shape_props_asset = self.gym.get_asset_rigid_shape_properties(robot_asset) # 刚性形状属性列表
 
         # save body names from the asset
         body_names = self.gym.get_asset_rigid_body_names(robot_asset)
@@ -651,17 +653,17 @@ class LeggedRobot(BaseTask):
         self.num_bodies = len(body_names)
         self.num_dofs = len(self.dof_names)
         feet_names = [s for s in body_names if self.cfg.asset.foot_name in s]
-        penalized_contact_names = []
+        penalized_contact_names = [] # 惩罚接触的刚体列表
         for name in self.cfg.asset.penalize_contacts_on:
             penalized_contact_names.extend([s for s in body_names if name in s])
-        termination_contact_names = []
+        termination_contact_names = [] # 终止接触的刚体列表
         for name in self.cfg.asset.terminate_after_contacts_on:
             termination_contact_names.extend([s for s in body_names if name in s])
 
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
         start_pose = gymapi.Transform()
-        start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
+        start_pose.p = gymapi.Vec3(*self.base_init_state[:3]) # 把init_state.pos解包赋值给start_pose.p
 
         self._get_env_origins()
         env_lower = gymapi.Vec3(0., 0., 0.)
@@ -675,17 +677,17 @@ class LeggedRobot(BaseTask):
             pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
                 
-            rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
+            rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i) # 随机化摩擦系数
             self.gym.set_asset_rigid_shape_properties(robot_asset, rigid_shape_props)
             actor_handle = self.gym.create_actor(env_handle, robot_asset, start_pose, self.cfg.asset.name, i, self.cfg.asset.self_collisions, 0)
-            dof_props = self._process_dof_props(dof_props_asset, i)
+            dof_props = self._process_dof_props(dof_props_asset, i) # 储存/设置关节属性
             self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
             body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
-            body_props = self._process_rigid_body_props(body_props, i)
+            body_props = self._process_rigid_body_props(body_props, i) # 随机化base质量
             self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
-
+        # 根据名字找到对应的刚体索引
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
@@ -717,8 +719,8 @@ class LeggedRobot(BaseTask):
             self.custom_origins = False
             self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
             # create a grid of robots
-            num_cols = np.floor(np.sqrt(self.num_envs))
-            num_rows = np.ceil(self.num_envs / num_cols)
+            num_cols = np.floor(np.sqrt(self.num_envs)) # 计算网格的列数
+            num_rows = np.ceil(self.num_envs / num_cols) # 计算网格的行数
             xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
             spacing = self.cfg.env.env_spacing
             self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
@@ -726,15 +728,15 @@ class LeggedRobot(BaseTask):
             self.env_origins[:, 2] = 0.
 
     def _parse_cfg(self, cfg):
-        self.dt = self.cfg.control.decimation * self.sim_params.dt
-        self.obs_scales = self.cfg.normalization.obs_scales
-        self.reward_scales = class_to_dict(self.cfg.rewards.scales)
-        self.command_ranges = class_to_dict(self.cfg.commands.ranges)
+        self.dt = self.cfg.control.decimation * self.sim_params.dt # 50Hz = 0.02 = 4 * 0.005
+        self.obs_scales = self.cfg.normalization.obs_scales # 观测值缩放系数
+        self.reward_scales = class_to_dict(self.cfg.rewards.scales) # 奖励缩放系数
+        self.command_ranges = class_to_dict(self.cfg.commands.ranges) # 命令范围
         if self.cfg.terrain.mesh_type not in ['heightfield', 'trimesh']:
             self.cfg.terrain.curriculum = False
-        self.max_episode_length_s = self.cfg.env.episode_length_s
-        self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
-
+        self.max_episode_length_s = self.cfg.env.episode_length_s 
+        self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt) # 每个训练回合的最大步数
+        # 推力干扰的步数间隔
         self.cfg.domain_rand.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
 
     def _draw_debug_vis(self):

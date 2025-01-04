@@ -89,11 +89,11 @@ class TaskRegistry():
             # load config files
             env_cfg, _ = self.get_cfgs(name)
         # override cfg from args (if specified)
-        env_cfg, _ = update_cfg_from_args(env_cfg, None, args)
+        env_cfg, _ = update_cfg_from_args(env_cfg, None, args) # 更新num_envs
         set_seed(env_cfg.seed)
         # parse sim params (convert to dict first)
-        sim_params = {"sim": class_to_dict(env_cfg.sim)}
-        sim_params = parse_sim_params(args, sim_params)
+        sim_params = {"sim": class_to_dict(env_cfg.sim)} # dt, substeps, gravity, up_axis, physx
+        sim_params = parse_sim_params(args, sim_params) # 用args中的参数覆盖sim_params
         env = task_class(   cfg=env_cfg,
                             sim_params=sim_params,
                             physics_engine=args.physics_engine,

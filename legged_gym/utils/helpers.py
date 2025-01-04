@@ -69,12 +69,12 @@ def set_seed(seed):
         seed = np.random.randint(0, 10000)
     print("Setting seed: {}".format(seed))
     
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)          # Python 标准库的随机数生成器
+    np.random.seed(seed)       # NumPy 的随机数生成器
+    torch.manual_seed(seed)    # PyTorch CPU 随机数生成器
+    os.environ['PYTHONHASHSEED'] = str(seed) # 设置 Python 哈希函数的种子
+    torch.cuda.manual_seed(seed)      # 当前 GPU 的随机数生成器
+    torch.cuda.manual_seed_all(seed)  # 所有 GPU 的随机数生成器
 
 def parse_sim_params(args, cfg):
     # code from Isaac Gym Preview 2

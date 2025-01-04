@@ -73,7 +73,7 @@ class Anymal(LeggedRobot):
         if self.cfg.control.use_actuator_network:
             with torch.inference_mode():
                 self.sea_input[:, 0, 0] = (actions * self.cfg.control.action_scale + self.default_dof_pos - self.dof_pos).flatten()
-                self.sea_input[:, 0, 1] = self.dof_vel.flatten()
+                self.sea_input[:, 0, 1] = self.dof_vel.flatten() # [num_envs*num_actions, 1, 2]
                 torques, (self.sea_hidden_state[:], self.sea_cell_state[:]) = self.actuator_network(self.sea_input, (self.sea_hidden_state, self.sea_cell_state))
             return torques
         else:
