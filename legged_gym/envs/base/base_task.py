@@ -81,7 +81,7 @@ class BaseTask():
         self.extras = {}
 
         # create envs, sim and viewer
-        self.create_sim()
+        self.create_sim() # 父类能直接调用子类的方法
         self.gym.prepare_sim(self.sim)
 
         # todo: read from config
