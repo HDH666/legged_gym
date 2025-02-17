@@ -42,7 +42,7 @@ from .a1.a1_config import A1RoughCfg, A1RoughCfgPPO
 import os
 
 from legged_gym.utils.task_registry import task_registry
-
+# 不带括号是类，带括号是实例
 task_registry.register( "anymal_c_rough", Anymal, AnymalCRoughCfg(), AnymalCRoughCfgPPO() )
 task_registry.register( "anymal_c_flat", Anymal, AnymalCFlatCfg(), AnymalCFlatCfgPPO() )
 task_registry.register( "anymal_b", Anymal, AnymalBRoughCfg(), AnymalBRoughCfgPPO() )

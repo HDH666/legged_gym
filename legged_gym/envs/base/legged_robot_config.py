@@ -239,6 +239,6 @@ class LeggedRobotCfgPPO(BaseConfig):
         run_name = ''
         # load and resume
         resume = False
-        load_run = -1 # -1 = last run
-        checkpoint = -1 # -1 = last saved model
+        load_run = -1 # -1 = last run 或文件夹名
+        checkpoint = -1 # -1 = last saved model 或50 100等迭代次数
         resume_path = None # updated from load_run and chkpt
